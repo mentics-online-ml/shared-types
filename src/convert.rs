@@ -10,15 +10,17 @@ impl Features {
         let ask_size = try_json_field(&v, "asksz")?;
         return Ok(Features { id, x: array!(bid, bid_size, ask, ask_size) });
     }
+}
 
-    pub fn serialize(&self) -> Vec<u8> {
-        format!("{}: placeholder data", self.id).into_bytes()
+impl Default for Features {
+    fn default() -> Self {
+        Features { id: 0, x: Array1::<SeriesFloat>::zeros(NUM_FEATURES) }
     }
 }
 
 impl FeaturesSeries {
     pub fn new(id: EventId) -> Self {
-        FeaturesSeries { id, x: Array2::<Float>::zeros((NUM_FEATURES, SERIES_LENGTH)) }
+        FeaturesSeries { id, x: Array2::<SeriesFloat>::zeros((NUM_FEATURES, SERIES_LENGTH)) }
     }
 
     pub fn insert(&mut self, idx:usize, features:Features) {
