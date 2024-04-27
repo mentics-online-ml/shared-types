@@ -1,6 +1,7 @@
 pub mod convert;
 
-use std::fmt::Display;
+use std::{fmt::Display, time::{SystemTime, UNIX_EPOCH}};
+use chrono::Utc;
 use serde_json::{self, Value};
 use ndarray::prelude::*;
 
@@ -19,16 +20,36 @@ pub type SeriesFloat = f32;
 /// Type to use for model parameters.
 pub type ModelFloat = f32;
 
+/// Type to use for timestamps everywhere. Might change to a struct sometime to be a new type.
+pub type Timestamp = i64;
+
 // It's very likely we will be running on multiple different architectures, so a central place
 // to ensure binary compatibility is important. For example, t4g.small (general use) instances are ARM64, while g6.xlarge (for GPU) are X86_64.
 pub fn event_id_to_bytes(e:EventId) -> [u8; 8] { e.to_le_bytes() }
 pub fn float_to_bytes(f:SeriesFloat) -> [u8; 4] { f.to_le_bytes() }
 pub fn bytes_to_event_id(b:[u8;8]) -> EventId { u64::from_le_bytes(b) }
 
-#[derive(Debug)]
-pub struct FeaturesError {
-    // pub under:Box<dyn Display>
-    pub under:String
+/// TODO: not the best place for this, but...
+pub fn now() -> Timestamp {
+    SystemTime::now().duration_since(UNIX_EPOCH).expect("Invalid system time").as_millis() as Timestamp
+}
+
+pub trait Logger {
+    fn log(&self, msg: String);
+}
+
+pub struct StdoutLogger();
+
+impl StdoutLogger {
+    pub fn boxed() -> Box<StdoutLogger> {
+        Box::new(StdoutLogger())
+    }
+}
+
+impl Logger for StdoutLogger {
+    fn log(&self, msg: String) {
+        println!("{:?}", msg);
+    }
 }
 
 #[derive(Debug)]
@@ -38,13 +59,13 @@ pub struct Raw {
 }
 
 #[derive(Debug)]
-pub struct Features {
+pub struct Event {
     pub id: EventId,
     pub x: Array1::<SeriesFloat>, // size = NUM_FEATURES
 }
 
 #[derive(Debug)]
-pub struct FeaturesSeries {
+pub struct EventSeries {
     pub id: EventId,
     pub x: Array2::<SeriesFloat>, // size = NUM_FEATURES x SERIES_LENGTH
 }
@@ -52,11 +73,19 @@ pub struct FeaturesSeries {
 #[derive(Debug)]
 /// The result of an inference.
 pub struct Inference {
+    pub value: SeriesFloat
+}
+
+impl Default for Inference {
+    fn default() -> Self {
+        Self { value: Default::default() }
+    }
 }
 
 #[derive(Debug)]
 /// The id is of the most recent event that was included in the inference.
 pub struct Inferred {
     pub id: EventId,
-    pub inf: Inference,
+    pub timestamp: Timestamp,
+    pub inference: Inference,
 }
