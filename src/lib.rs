@@ -89,3 +89,19 @@ pub struct Inferred {
     pub timestamp: Timestamp,
     pub inference: Inference,
 }
+
+pub struct Label {
+    pub value: Array1::<SeriesFloat>, // size = NUM_FEATURES
+}
+
+impl Default for Label {
+    fn default() -> Self {
+        Self { value: Default::default() }
+    }
+}
+
+pub struct Labelled {
+    pub id: EventId,
+    pub timestamp: Timestamp,
+    pub label: Label,
+}
