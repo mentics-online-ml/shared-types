@@ -1,7 +1,7 @@
 pub mod convert;
 
-use std::{fmt::Display, time::{SystemTime, UNIX_EPOCH}};
-use chrono::Utc;
+use std::time::{SystemTime, UNIX_EPOCH};
+use chrono::NaiveDateTime;
 use serde_json::{self, Value};
 use ndarray::prelude::*;
 
@@ -22,6 +22,7 @@ pub type ModelFloat = f32;
 
 /// Type to use for timestamps everywhere. Might change to a struct sometime to be a new type.
 pub type Timestamp = i64;
+pub type UtcDateTime = NaiveDateTime;
 
 // It's very likely we will be running on multiple different architectures, so a central place
 // to ensure binary compatibility is important. For example, t4g.small (general use) instances are ARM64, while g6.xlarge (for GPU) are X86_64.
@@ -70,16 +71,10 @@ pub struct EventSeries {
     pub x: Array2::<SeriesFloat>, // size = NUM_FEATURES x SERIES_LENGTH
 }
 
-#[derive(Debug)]
+#[derive(Debug,Default)]
 /// The result of an inference.
 pub struct Inference {
     pub value: SeriesFloat
-}
-
-impl Default for Inference {
-    fn default() -> Self {
-        Self { value: Default::default() }
-    }
 }
 
 #[derive(Debug)]
@@ -90,16 +85,12 @@ pub struct Inferred {
     pub inference: Inference,
 }
 
+#[derive(Debug,Default)]
 pub struct Label {
     pub value: Array1::<SeriesFloat>, // size = NUM_FEATURES
 }
 
-impl Default for Label {
-    fn default() -> Self {
-        Self { value: Default::default() }
-    }
-}
-
+#[derive(Debug,Default)]
 pub struct Labelled {
     pub id: EventId,
     pub timestamp: Timestamp,

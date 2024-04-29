@@ -9,7 +9,7 @@ impl Event {
         let bid_size = try_json_field(&v, "bidsz")?;
         let ask = try_json_field(&v, "ask")?;
         let ask_size = try_json_field(&v, "asksz")?;
-        return Ok(Event { id, x: array!(bid, bid_size, ask, ask_size) });
+        Ok(Event { id, x: array!(bid, bid_size, ask, ask_size) })
     }
 }
 
@@ -27,6 +27,12 @@ impl EventSeries {
     pub fn insert(&mut self, idx:usize, features:Event) {
         self.x.slice_mut(s![.., idx]).assign(&features.x);
     }
+}
+
+#[allow(deprecated)]
+pub fn serialize_timestamp(timestamp: UtcDateTime) -> Timestamp {
+    // We don't need to convert to UTC first as the warning says because we always have it UTC for NaiveDateTime.
+    timestamp.timestamp_millis()
 }
 
 // ----
