@@ -1,6 +1,16 @@
 use anyhow::{bail, Context};
 use ndarray::prelude::*;
+use serde_json::Value;
+
 use crate::*;
+
+// impl TryFrom<Value> for Quote {
+//     type Error = anyhow::Error;
+
+//     fn try_from(value: Value) -> Result<Self, Self::Error> {
+//         todo!()
+//     }
+// }
 
 impl Event {
     pub fn try_from(id: EventId, raw: &str) -> anyhow::Result<Event> {
@@ -30,7 +40,7 @@ impl EventSeries {
 }
 
 #[allow(deprecated)]
-pub fn serialize_timestamp(timestamp: UtcDateTime) -> Timestamp {
+pub fn serialize_timestamp(timestamp: &UtcDateTime) -> Timestamp {
     // We don't need to convert to UTC first as the warning says because we always have it UTC for NaiveDateTime.
     timestamp.timestamp_millis()
 }

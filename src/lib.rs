@@ -2,8 +2,9 @@ pub mod convert;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::NaiveDateTime;
-use serde_json::{self, Value};
 use ndarray::prelude::*;
+use serde::Deserialize;
+use serde_aux::prelude::*;
 
 // TODO: where to define this config?
 pub const NUM_FEATURES:usize = 4;
@@ -53,11 +54,21 @@ impl Logger for StdoutLogger {
     }
 }
 
-#[derive(Debug)]
-pub struct Raw {
-    pub id: EventId,
-    pub raw: String,
+#[derive(Debug, Deserialize)]
+pub struct Quote {
+    pub bid: f32,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub biddate: Timestamp,
+    pub ask: f32,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub askdate: Timestamp,
 }
+
+// #[derive(Debug)]
+// pub struct Raw {
+//     pub id: EventId,
+//     pub raw: String,
+// }
 
 #[derive(Debug)]
 pub struct Event {
