@@ -6,6 +6,8 @@ use ndarray::prelude::*;
 use serde::Deserialize;
 use serde_aux::prelude::*;
 
+pub type VersionType = u32;
+
 // TODO: where to define this config?
 pub const NUM_FEATURES:usize = 4;
 pub const SERIES_LENGTH:usize = 128;
@@ -54,8 +56,14 @@ impl Logger for StdoutLogger {
     }
 }
 
+pub trait SeriesEvent {
+    fn set_event_id(&mut self, event_id:EventId);
+}
+
 #[derive(Debug, Deserialize)]
-pub struct Quote {
+pub struct QuoteEvent {
+    #[serde(default)]
+    pub event_id: EventId,
     pub bid: f32,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub biddate: Timestamp,
@@ -64,11 +72,11 @@ pub struct Quote {
     pub askdate: Timestamp,
 }
 
-// #[derive(Debug)]
-// pub struct Raw {
-//     pub id: EventId,
-//     pub raw: String,
-// }
+#[derive(Debug)]
+pub struct Raw {
+    pub id: EventId,
+    pub raw: String,
+}
 
 #[derive(Debug)]
 pub struct Event {
@@ -96,14 +104,16 @@ pub struct Inferred {
     pub inference: Inference,
 }
 
+pub const NUM_CHECKS: usize = 8;
+
 #[derive(Debug,Default)]
 pub struct Label {
-    pub value: Array1::<SeriesFloat>, // size = NUM_FEATURES
+    pub value: [ModelFloat; NUM_CHECKS]
 }
 
 #[derive(Debug,Default)]
 pub struct Labelled {
-    pub id: EventId,
+    pub event_id: EventId,
     pub timestamp: Timestamp,
     pub label: Label,
 }

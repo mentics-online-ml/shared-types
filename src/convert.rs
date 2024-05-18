@@ -12,6 +12,12 @@ use crate::*;
 //     }
 // }
 
+impl SeriesEvent for QuoteEvent {
+    fn set_event_id(&mut self, event_id:EventId) {
+        self.event_id = event_id;
+    }
+}
+
 impl Event {
     pub fn try_from(id: EventId, raw: &str) -> anyhow::Result<Event> {
         let v:Value = serde_json::from_str(raw)?;
