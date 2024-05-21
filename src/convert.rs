@@ -1,5 +1,4 @@
 use anyhow::{bail, Context};
-use ndarray::prelude::*;
 use serde_json::Value;
 
 use crate::*;
@@ -19,8 +18,9 @@ pub fn bytes_to_event_id(b:[u8;8]) -> EventId { u64::from_le_bytes(b) }
 // }
 
 impl SeriesEvent for QuoteEvent {
-    fn set_event_id(&mut self, event_id:EventId) {
+    fn set_ids(&mut self, event_id: EventId, offset: OffsetId) {
         self.event_id = event_id;
+        self.offset = offset;
     }
 }
 
@@ -59,11 +59,11 @@ pub fn serialize_timestamp(timestamp: &UtcDateTime) -> Timestamp {
 
 // ----
 
-fn try_json_field(v:&Value, name:&str) -> anyhow::Result<SeriesFloat> {
-    let field = &v[name];
-    if field.is_null() {
-        bail!("Field {} not found in value {:?}", name, v)
-    } else {
-        field.as_f64().map(|x| x as SeriesFloat).with_context(|| format!("Could not convert {field} to f64"))
-    }
-}
+// fn try_json_field(v:&Value, name:&str) -> anyhow::Result<SeriesFloat> {
+//     let field = &v[name];
+//     if field.is_null() {
+//         bail!("Field {} not found in value {:?}", name, v)
+//     } else {
+//         field.as_f64().map(|x| x as SeriesFloat).with_context(|| format!("Could not convert {field} to f64"))
+//     }
+// }
