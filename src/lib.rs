@@ -10,7 +10,7 @@ pub type VersionType = u32;
 pub const CURRENT_VERSION: VersionType = 1;
 
 // TODO: where to define this config?
-pub const NUM_FEATURES: usize = 4;
+pub const NUM_FEATURES: usize = 2;
 pub const SERIES_LENGTH: usize = 1024;
 
 // pub const EVENT_ID_FIELD: &str = "event_id";
@@ -56,6 +56,32 @@ pub trait SeriesEvent {
     fn set_ids(&mut self, event_id: EventId, offset: OffsetId);
 }
 
+///
+/*
+{
+"type":"quote"
+"symbol":"SPX"
+"bid":5249.61
+"bidsz":0
+"bidexch":""
+"biddate":"1715716641000"
+"ask":5250.74
+"asksz":0
+"askexch":""
+"askdate":"1715716641000"
+}
+*/
+///
+// pub struct InputQuote {
+//     pub bid: f32,
+//     pub bid_size: f32,
+//     pub bid_ts: u64,
+//     pub ask: f32,
+//     pub ask_size: f32,
+//     pub ask_ts: u64,
+// }
+
+
 #[derive(Debug, Deserialize)]
 pub struct QuoteEvent {
     #[serde(default)]
@@ -68,6 +94,14 @@ pub struct QuoteEvent {
     pub ask: f32,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub askdate: Timestamp,
+}
+
+impl TryFrom<&QuoteEvent> for [f32; NUM_FEATURES] {
+    type Error = ();
+
+    fn try_from(q: &QuoteEvent) -> Result<Self, Self::Error> {
+        Ok([q.bid, q.ask])
+    }
 }
 
 pub type LabelType = [ModelFloat; MODEL_OUTPUT_WIDTH];
