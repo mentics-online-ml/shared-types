@@ -3,7 +3,7 @@ pub mod convert;
 
 use chrono::{DateTime, NaiveDateTime};
 use chrono_tz::Tz;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 
 pub type VersionType = u32;
@@ -82,6 +82,7 @@ pub trait SeriesEvent {
 // }
 
 
+/// Published to series by ingest and read by label, train...
 #[derive(Debug, Deserialize)]
 pub struct QuoteEvent {
     #[serde(default)]
@@ -106,13 +107,28 @@ impl TryFrom<&QuoteEvent> for [f32; NUM_FEATURES] {
 
 pub type LabelType = [ModelFloat; MODEL_OUTPUT_WIDTH];
 /// The result of labelling.
-#[derive(Debug,Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Label {
-    pub value: [ModelFloat; MODEL_OUTPUT_WIDTH]
+    pub value: LabelType
+}
+
+/// Published to series by label and read by train.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LabelEvent {
+    pub event_id: EventId,
+    #[serde(default)]
+    pub offset: OffsetId,
+    pub timestamp: Timestamp,
+    pub label: Label
+}
+impl LabelEvent {
+    pub fn new(event_id: EventId, timestamp: Timestamp, label: Label) -> Self {
+        Self { event_id, offset: 0, timestamp, label }
+    }
 }
 
 #[derive(Debug, Default)]
-pub struct Labeled {
+pub struct LabelStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
     pub offset: OffsetId,
@@ -120,30 +136,34 @@ pub struct Labeled {
     pub label: Label,
 }
 
+pub type TrainType = ModelFloat;
+
 /// The result of training.
 #[derive(Debug,Default)]
 pub struct Train {
-    pub loss: ModelFloat
+    pub loss: TrainType
 }
 
 /// The id is of the most recent event that was included in the inference.
 #[derive(Debug)]
-pub struct Trained {
+pub struct TrainStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
     pub train: Train,
 }
 
+pub type InferType = [ModelFloat; MODEL_OUTPUT_WIDTH];
+
 /// The result of an inference.
 #[derive(Debug,Default)]
-pub struct Inference {
-    pub value: [ModelFloat; MODEL_OUTPUT_WIDTH]
+pub struct Infer {
+    pub value: InferType
 }
 
 #[derive(Debug)]
 /// The id is of the most recent event that was included in the inference.
-pub struct Inferred {
+pub struct InferStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
-    pub inference: Inference,
+    pub inference: Infer,
 }
