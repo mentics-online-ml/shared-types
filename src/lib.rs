@@ -13,8 +13,6 @@ pub const CURRENT_VERSION: VersionType = 1;
 pub const NUM_FEATURES: usize = 2;
 pub const SERIES_LENGTH: usize = 1024;
 
-// pub const EVENT_ID_FIELD: &str = "event_id";
-
 // This is a unique order preserving counter for the event that is used across all the data in a partition.
 pub type EventId = u64;
 
@@ -116,14 +114,13 @@ pub struct Label {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LabelEvent {
     pub event_id: EventId,
-    #[serde(default)]
     pub offset: OffsetId,
     pub timestamp: Timestamp,
     pub label: Label
 }
 impl LabelEvent {
-    pub fn new(event_id: EventId, timestamp: Timestamp, label: Label) -> Self {
-        Self { event_id, offset: 0, timestamp, label }
+    pub fn new(event_id: EventId, timestamp: Timestamp, offset: OffsetId, label: Label) -> Self {
+        Self { event_id, offset, timestamp, label }
     }
 }
 

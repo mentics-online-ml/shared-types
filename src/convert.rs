@@ -24,13 +24,6 @@ impl SeriesEvent for QuoteEvent {
     }
 }
 
-impl SeriesEvent for LabelEvent {
-    fn set_ids(&mut self, event_id: EventId, offset: OffsetId) {
-        self.event_id = event_id;
-        self.offset = offset;
-    }
-}
-
 // impl Event {
 //     pub fn try_from(id: EventId, raw: &str) -> anyhow::Result<Event> {
 //         let v:Value = serde_json::from_str(raw)?;
