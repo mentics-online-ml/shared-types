@@ -27,7 +27,9 @@ pub type SeriesFloat = f32;
 /// Type to use for model parameters.
 pub type ModelFloat = f32;
 pub const MODEL_OUTPUT_WIDTH: usize = 8;
-pub type ModelInput = [[f32; NUM_FEATURES]; SERIES_SIZE];
+pub type ModelInput = [[ModelFloat; NUM_FEATURES]; SERIES_SIZE];
+pub type ModelInputFlat = [ModelFloat; SERIES_SIZE * NUM_FEATURES];
+
 pub fn new_input() -> ModelInput {
     [[0f32; NUM_FEATURES]; SERIES_SIZE]
 }
@@ -152,6 +154,7 @@ pub struct LabelStored {
 }
 
 pub type TrainType = ModelFloat;
+pub type BatchTrainType = Vec<ModelFloat>;
 
 /// The result of training.
 #[derive(Debug,Default)]
@@ -168,6 +171,7 @@ pub struct TrainStored {
     pub offset: OffsetId,
     pub train: Train,
     pub input: ModelInput,
+    pub label: Label,
 }
 
 pub type InferType = [ModelFloat; MODEL_OUTPUT_WIDTH];
