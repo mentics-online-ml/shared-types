@@ -7,11 +7,13 @@ use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 
 pub type VersionType = u32;
+/// CURRENT_VERSION should only be used in main.rs files so that all other objects receive it.
 pub const CURRENT_VERSION: VersionType = 1;
 
 // TODO: where to define this config?
 pub const NUM_FEATURES: usize = 2;
-pub const SERIES_LENGTH: usize = 1024;
+pub const SERIES_SIZE: usize = 1024;
+pub const SERIES_LENGTH: OffsetId = SERIES_SIZE as OffsetId;
 
 // This is a unique order preserving counter for the event that is used across all the data in a partition.
 pub type EventId = u64;
@@ -25,6 +27,10 @@ pub type SeriesFloat = f32;
 /// Type to use for model parameters.
 pub type ModelFloat = f32;
 pub const MODEL_OUTPUT_WIDTH: usize = 8;
+pub type ModelInput = [[f32; NUM_FEATURES]; SERIES_SIZE];
+pub fn new_input() -> ModelInput {
+    [[0f32; NUM_FEATURES]; SERIES_SIZE]
+}
 
 /// Type to use for timestamps everywhere. Might change to a struct sometime to be a new type.
 pub type Timestamp = i64;
@@ -95,6 +101,16 @@ pub struct QuoteEvent {
     pub askdate: Timestamp,
 }
 
+// impl Clone for QuoteEvent {
+//     fn clone(&self) -> Self {
+//         Self { event_id: self.event_id.clone(), offset: self.offset.clone(), bid: self.bid.clone(), biddate: self.biddate.clone(), ask: self.ask.clone(), askdate: self.askdate.clone() }
+//     }
+// }
+
+// impl Copy for QuoteEvent {
+
+// }
+
 impl TryFrom<&QuoteEvent> for [f32; NUM_FEATURES] {
     type Error = ();
 
@@ -114,13 +130,14 @@ pub struct Label {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LabelEvent {
     pub event_id: EventId,
-    pub offset: OffsetId,
+    pub offset_from: OffsetId,
+    pub offset_to: OffsetId,
     pub timestamp: Timestamp,
     pub label: Label
 }
 impl LabelEvent {
-    pub fn new(event_id: EventId, timestamp: Timestamp, offset: OffsetId, label: Label) -> Self {
-        Self { event_id, offset, timestamp, label }
+    pub fn new(event_id: EventId, timestamp: Timestamp, offset_from: OffsetId, offset_to: OffsetId, label: Label) -> Self {
+        Self { event_id, offset_from, offset_to, timestamp, label }
     }
 }
 
@@ -128,8 +145,9 @@ impl LabelEvent {
 pub struct LabelStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
-    pub offset: OffsetId,
     pub partition: PartitionId,
+    pub offset_from: OffsetId,
+    pub offset_to: OffsetId,
     pub label: Label,
 }
 
@@ -146,7 +164,10 @@ pub struct Train {
 pub struct TrainStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
+    pub partition: PartitionId,
+    pub offset: OffsetId,
     pub train: Train,
+    pub input: ModelInput,
 }
 
 pub type InferType = [ModelFloat; MODEL_OUTPUT_WIDTH];

@@ -14,9 +14,9 @@ pub fn event_in_trading_time(ev: &QuoteEvent) -> bool { // anyhow::Result<bool> 
     ts_in_trading_time(ev.biddate) && ts_in_trading_time(ev.askdate)
 }
 
-pub fn valid_time_and_date(ev: &QuoteEvent, date: NaiveDate) -> bool {
-    same_date(to_date(ev), date) && event_in_trading_time(ev)
-}
+// pub fn valid_time_and_date(ev: &QuoteEvent, date: NaiveDate) -> bool {
+//     same_date(to_date(ev), date) && event_in_trading_time(ev)
+// }
 
 pub fn now() -> Timestamp {
     SystemTime::now().duration_since(UNIX_EPOCH).expect("Invalid system time").as_millis() as Timestamp
