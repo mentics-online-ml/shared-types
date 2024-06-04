@@ -1,17 +1,22 @@
+#![feature(trait_alias)]
+
 pub mod util;
 pub mod convert;
+mod implement;
+pub mod series_proc;
 
-use chrono::{DateTime, NaiveDateTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_aux::prelude::*;
+use util::{same_date, to_market_datetime, ts_in_trading_time};
 
 pub type VersionType = u32;
 /// CURRENT_VERSION should only be used in main.rs files so that all other objects receive it.
 pub const CURRENT_VERSION: VersionType = 1;
 
-// TODO: where to define this config?
-pub const NUM_FEATURES: usize = 2;
+pub const TIME_ENCODING_WIDTH: usize = 4;
+pub const NUM_FEATURES: usize = 2 + TIME_ENCODING_WIDTH;
 pub const SERIES_SIZE: usize = 1024;
 pub const SERIES_LENGTH: OffsetId = SERIES_SIZE as OffsetId;
 
@@ -39,6 +44,7 @@ pub type Timestamp = i64;
 pub type UtcDateTime = NaiveDateTime;
 pub type MarketTimestamp = DateTime<Tz>;
 const MARKET_TIMEZONE: chrono_tz::Tz = chrono_tz::US::Eastern;
+const INVALID_DATE: NaiveDate = NaiveDate::MIN;
 
 pub trait Logger {
     fn log(&self, msg: String);
@@ -58,8 +64,65 @@ impl Logger for StdoutLogger {
     }
 }
 
+pub enum Validity {
+    Valid,
+    CauseReset,
+    Invalid,
+}
+
 pub trait SeriesEvent {
     fn set_ids(&mut self, event_id: EventId, offset: OffsetId);
+    fn timestamp(&self) -> Timestamp;
+
+    // TODO: base should be generic, but... lazy for now
+    fn validity(&self, base: &QuoteValues) -> Validity {
+        if !self.event_in_trading_time() {
+            Validity::Invalid
+        } else if !same_date(self.to_date_or_0(), base.date_or_0) {
+            Validity::CauseReset
+        } else {
+            Validity::Valid
+        }
+    }
+
+    fn event_in_trading_time(&self) -> bool {
+        ts_in_trading_time(self.timestamp())
+    }
+
+    fn to_date_or_0(&self) -> NaiveDate {
+        to_market_datetime(self.timestamp()).date_naive()
+    }
+}
+
+pub trait EventType = SeriesEvent + DeserializeOwned;
+
+pub trait EventHandler<T: EventType> {
+    fn handle(&mut self, event: T) -> bool;
+}
+
+// pub trait EventProcessor<T: EventType> {
+//     fn handle(&mut self, event: &T) -> bool;
+// }
+
+pub trait Processor<T,S> {
+    fn process(&mut self, start_values: &S, x: &mut T) -> bool;
+    fn reset(&mut self) {
+        // default do nothing
+    }
+}
+
+// #[derive(Default)]
+// pub struct NoopProcessor<T>(T);
+
+// impl<T> Processor<T> for NoopProcessor<T> {
+//     fn process(&mut self, _: &T) -> bool {
+//         false
+//     }
+// }
+
+pub trait BaseValues<T> {
+    fn convert_from(event: &T) -> Self;
+    fn validity(&self, event: &T) -> Validity;
 }
 
 ///
@@ -113,23 +176,59 @@ pub struct QuoteEvent {
 
 // }
 
-impl TryFrom<&QuoteEvent> for [f32; NUM_FEATURES] {
-    type Error = ();
+// impl TryFrom<&QuoteEvent> for [f32; NUM_FEATURES] {
+//     type Error = ();
 
-    fn try_from(q: &QuoteEvent) -> Result<Self, Self::Error> {
-        Ok([q.bid, q.ask])
+//     fn try_from(q: &QuoteEvent) -> Result<Self, Self::Error> {
+//         Ok([q.bid, q.ask])
+//     }
+// }
+
+#[derive(Default)]
+pub struct QuoteValues {
+    pub date_or_0: NaiveDate,
+    pub bid: SeriesFloat,
+    pub ask: SeriesFloat
+}
+
+// impl Default for QuoteValues {
+//     fn default() -> Self {
+//         Self { date_or_0: NaiveDate::default(), bid: 0.0, ask: 0.0 }
+//     }
+// }
+
+// impl From<&QuoteEvent> for QuoteValues {
+//     fn from(event: &QuoteEvent) -> Self {
+//         Self { bid: event.bid, ask: event.ask }
+//     }
+// }
+
+impl BaseValues<QuoteEvent> for QuoteValues {
+    fn convert_from(event: &QuoteEvent) -> Self {
+        Self { date_or_0: event.to_date_or_0(), bid: event.bid, ask: event.ask }
+    }
+
+    fn validity(&self, event: &QuoteEvent) -> Validity {
+        if !event.event_in_trading_time() {
+            Validity::Invalid
+        } else if !same_date(event.to_date_or_0(), self.date_or_0) {
+            Validity::CauseReset
+        } else {
+            Validity::Valid
+        }
     }
 }
 
+
 pub type LabelType = [ModelFloat; MODEL_OUTPUT_WIDTH];
 /// The result of labelling.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Label {
     pub value: LabelType
 }
 
 /// Published to series by label and read by train.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LabelEvent {
     pub event_id: EventId,
     pub offset_from: OffsetId,
@@ -153,13 +252,14 @@ pub struct LabelStored {
     pub label: Label,
 }
 
-pub type TrainType = ModelFloat;
-pub type BatchTrainType = Vec<ModelFloat>;
+pub type TrainResultType = ModelFloat;
+pub type BatchTrainResultType = Vec<ModelFloat>;
+pub type ModelOutput = LabelType;
 
 /// The result of training.
 #[derive(Debug,Default)]
 pub struct Train {
-    pub loss: TrainType
+    pub loss: TrainResultType
 }
 
 /// The id is of the most recent event that was included in the inference.
@@ -169,9 +269,14 @@ pub struct TrainStored {
     pub timestamp: Timestamp,
     pub partition: PartitionId,
     pub offset: OffsetId,
-    pub train: Train,
     pub input: ModelInput,
     pub label: Label,
+}
+
+pub struct TrainLossStored {
+    pub event_id: EventId,
+    pub timestamp: Timestamp,
+    pub loss: ModelFloat,
 }
 
 pub type InferType = [ModelFloat; MODEL_OUTPUT_WIDTH];

@@ -3,15 +3,8 @@ use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 
 use crate::*;
 
-const INVALID_DATE: NaiveDate = NaiveDate::MIN;
-
 pub fn same_date(date1: NaiveDate, date2: NaiveDate) -> bool {
     date1 != INVALID_DATE && date2 != INVALID_DATE && date1 == date2
-}
-
-pub fn event_in_trading_time(ev: &QuoteEvent) -> bool { // anyhow::Result<bool> {
-    // let ev: QuoteEvent = msg_to(msg)?;
-    ts_in_trading_time(ev.biddate) && ts_in_trading_time(ev.askdate)
 }
 
 // pub fn valid_time_and_date(ev: &QuoteEvent, date: NaiveDate) -> bool {
@@ -26,19 +19,6 @@ pub fn to_datetime(millis: Timestamp) -> UtcDateTime {
     // We don't need to convert to UTC first as the warning says because we always have it UTC for NaiveDateTime.
     #[allow(deprecated)]
     NaiveDateTime::from_timestamp_millis(millis).unwrap()
-}
-
-pub fn to_date(ev: &QuoteEvent) -> NaiveDate {
-    let bid_date = to_market_datetime(ev.biddate).date_naive();
-    let ask_date = to_market_datetime(ev.askdate).date_naive();
-    // TODO: if they're very near each other, could choose one, probably latter
-    // arbitrary 10 seconds?
-    if bid_date == ask_date || (ev.askdate - ev.biddate) < 10 {
-        ask_date
-    } else {
-        // bail!("bid date and ask date are not the same");
-        INVALID_DATE
-    }
 }
 
 pub fn to_market_datetime(millis: Timestamp) -> DateTime<chrono_tz::Tz> {
