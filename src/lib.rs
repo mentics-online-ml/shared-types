@@ -1,15 +1,40 @@
 #![feature(trait_alias)]
+#![feature(iter_array_chunks)]
 
 pub mod util;
 pub mod convert;
-mod implement;
 pub mod series_proc;
+pub mod paths;
+mod implement;
 
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
+use convert::output_from_bytes;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_aux::prelude::*;
 use util::{same_date, to_market_datetime, ts_in_trading_time};
+
+#[macro_export]
+macro_rules! err_return {
+    ($val:expr, $msg:expr, $ret_val:expr) => {
+        match $val {
+            Ok(x) => x,
+            Err(e) => {
+                println!($msg, e);
+                return $ret_val;
+            }
+        }
+    };
+    ($val:expr, $msg:expr) => {
+        match $val {
+            Ok(x) => x,
+            Err(e) => {
+                println!($msg, e);
+                return
+            }
+        }
+    };
+}
 
 pub type VersionType = u32;
 /// CURRENT_VERSION should only be used in main.rs files so that all other objects receive it.
@@ -21,10 +46,9 @@ pub const SERIES_SIZE: usize = 1024;
 pub const SERIES_LENGTH: OffsetId = SERIES_SIZE as OffsetId;
 
 // This is a unique order preserving counter for the event that is used across all the data in a partition.
-pub type EventId = u64;
+pub type EventId = i64;
 
 pub type OffsetId = i64;
-pub type PartitionId = i32;
 
 /// Type to use for data series values.
 pub type SeriesFloat = f32;
@@ -32,6 +56,7 @@ pub type SeriesFloat = f32;
 /// Type to use for model parameters.
 pub type ModelFloat = f32;
 pub const MODEL_OUTPUT_WIDTH: usize = 8;
+pub type ModelInputInner = [ModelFloat; NUM_FEATURES];
 pub type ModelInput = [[ModelFloat; NUM_FEATURES]; SERIES_SIZE];
 pub type ModelInputFlat = [ModelFloat; SERIES_SIZE * NUM_FEATURES];
 
@@ -219,12 +244,16 @@ impl BaseValues<QuoteEvent> for QuoteValues {
     }
 }
 
-
-pub type LabelType = [ModelFloat; MODEL_OUTPUT_WIDTH];
 /// The result of labelling.
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Label {
     pub value: LabelType
+}
+
+impl From<Vec<u8>> for Label {
+    fn from(bytes: Vec<u8>) -> Self {
+        Label { value: output_from_bytes(&bytes) }
+    }
 }
 
 /// Published to series by label and read by train.
@@ -246,7 +275,6 @@ impl LabelEvent {
 pub struct LabelStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
-    pub partition: PartitionId,
     pub offset_from: OffsetId,
     pub offset_to: OffsetId,
     pub label: Label,
@@ -254,32 +282,36 @@ pub struct LabelStored {
 
 pub type TrainResultType = ModelFloat;
 pub type BatchTrainResultType = Vec<ModelFloat>;
-pub type ModelOutput = LabelType;
+pub type ModelOutput = [ModelFloat; MODEL_OUTPUT_WIDTH];
+pub type LabelType = ModelOutput;
+pub type InferType = ModelOutput;
 
 /// The result of training.
-#[derive(Debug,Default)]
+// #[derive(Debug,Default)]
 pub struct Train {
     pub loss: TrainResultType
 }
 
 /// The id is of the most recent event that was included in the inference.
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct TrainStored {
     pub event_id: EventId,
     pub timestamp: Timestamp,
-    pub partition: PartitionId,
     pub offset: OffsetId,
+    pub loss: TrainResultType,
     pub input: ModelInput,
-    pub label: Label,
+    pub output: ModelOutput,
 }
 
-pub struct TrainLossStored {
+pub struct TrainStoredWithLabel {
     pub event_id: EventId,
     pub timestamp: Timestamp,
-    pub loss: ModelFloat,
+    pub offset: OffsetId,
+    pub loss: TrainResultType,
+    pub input: ModelInput,
+    pub output: ModelOutput,
+    pub label: LabelType,
 }
-
-pub type InferType = [ModelFloat; MODEL_OUTPUT_WIDTH];
 
 /// The result of an inference.
 #[derive(Debug,Default)]
