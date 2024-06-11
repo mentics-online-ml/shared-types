@@ -1,42 +1,40 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
-
-use crate::*;
-
-pub fn same_date(date1: NaiveDate, date2: NaiveDate) -> bool {
-    date1 != INVALID_DATE && date2 != INVALID_DATE && date1 == date2
+#[macro_export]
+macro_rules! err_return {
+    ($val:expr, $msg:expr, $ret_val:expr) => {
+        match $val {
+            Ok(x) => x,
+            Err(e) => {
+                println!($msg, e);
+                return $ret_val;
+            }
+        }
+    };
+    ($val:expr, $msg:expr) => {
+        match $val {
+            Ok(x) => x,
+            Err(e) => {
+                println!($msg, e);
+                return
+            }
+        }
+    };
 }
 
-// pub fn valid_time_and_date(ev: &QuoteEvent, date: NaiveDate) -> bool {
-//     same_date(to_date(ev), date) && event_in_trading_time(ev)
+// Assuming compiler is optimizing this to a single operation
+#[inline(always)]
+pub fn divrem(a: u32, b: u32) -> (u32, u32) {
+    (a / b, a % b)
+}
+
+pub fn convert_slice<T,U>(v: &[T]) -> &[U] {
+    // println!("convert slice {} -> {}, {} -> {}", std::any::type_name::<T>(), std::any::type_name::<T>(), std::mem::size_of::<U>(), std::mem::size_of::<U>());
+    let size_from = std::mem::size_of::<T>();
+    let size_to = std::mem::size_of::<U>();
+    let len_from = v.len();
+    let len_to = len_from * size_from / size_to;
+    unsafe { std::slice::from_raw_parts(v.as_ptr() as *const U, len_to) }
+}
+
+// pub fn convert_slice_sized<T,U, const N: usize>>(v: &[T]) -> &[U; N] {
+//     unsafe { std::slice::from_raw_parts(v.as_ptr() as *const U, v.len() * 4) }
 // }
-
-pub fn now() -> Timestamp {
-    SystemTime::now().duration_since(UNIX_EPOCH).expect("Invalid system time").as_millis() as Timestamp
-}
-
-pub fn to_datetime(millis: Timestamp) -> UtcDateTime {
-    // We don't need to convert to UTC first as the warning says because we always have it UTC for NaiveDateTime.
-    #[allow(deprecated)]
-    NaiveDateTime::from_timestamp_millis(millis).unwrap()
-}
-
-pub fn to_market_datetime(millis: Timestamp) -> DateTime<chrono_tz::Tz> {
-    DateTime::from_timestamp_millis(millis).unwrap().with_timezone(&MARKET_TIMEZONE)
-}
-
-/// Currently just checks if it is a weekday within typical eastern tz trading hours.
-/// TODO: could use calendar data acquired from tradier
-pub fn dt_in_trading_time(dt: DateTime<chrono_tz::Tz>) -> bool {
-    let istime = (NaiveTime::from_hms_opt(9,30,0)..NaiveTime::from_hms_opt(16,0,0)).contains(&Some(dt.time()));
-    is_weekday(dt) && istime
-}
-
-pub fn ts_in_trading_time(ts: Timestamp) -> bool {
-    dt_in_trading_time(to_market_datetime(ts))
-    // let dt = to_market_datetime(ts);
-}
-
-fn is_weekday<Tz: TimeZone>(dt: DateTime<Tz>) -> bool {
-    dt.weekday().num_days_from_monday() < 5
-}

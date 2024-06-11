@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use series::{EventType, Validity};
+
 use crate::*;
 
 // pub trait SeriesProcessor<T: EventType> {
@@ -15,6 +17,22 @@ use crate::*;
 //     start_values: S,
 //     proc: P
 // }
+
+pub trait BaseValues<T> {
+    fn convert_from(event: &T) -> Self;
+    fn validity(&self, event: &T) -> Validity;
+}
+
+pub trait EventHandler<T: EventType> {
+    fn handle(&mut self, event: T) -> bool;
+}
+
+pub trait Processor<T,S> {
+    fn process(&mut self, start_values: &S, x: &mut T) -> bool;
+    fn reset(&mut self) {
+        // default do nothing
+    }
+}
 
 // pub struct BaseHandler<S: Default + BaseValues<T>, T: EventType, P>
 // where P: Fn(&mut VecDeque<T>) -> bool {
