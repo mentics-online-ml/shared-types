@@ -29,7 +29,7 @@ pub fn series_to_input(events: &VecDeque<QuoteEvent>) -> anyhow::Result<InputRaw
     assert!(events.len() == SERIES1_SIZE); // this is also checked before call above
     let mut input = new_series();
 
-    let embedder = TimeEmbedder::<TIME_ENCODING_SIZE>::new();
+    let embedder = TimeEmbedder::<TIME_EMBEDDING_SIZE>::new();
 
     // indexing ok due to previous checking
     let base_event = &events[SERIES1_SIZE - 1];
@@ -44,7 +44,7 @@ pub fn series_to_input(events: &VecDeque<QuoteEvent>) -> anyhow::Result<InputRaw
         input_column[1] = ask;
         // std::slice::bytes::copy_memory
         // TODO: this can be optimized
-        input_column[2..(2 + TIME_ENCODING_SIZE)].copy_from_slice(&embedded_time);
+        input_column[2..(2 + TIME_EMBEDDING_SIZE)].copy_from_slice(&embedded_time);
         // (*input_column)[0..1] = [bid, ask];
         // (*input_column)[2..(2 + TIME_ENCODING_WIDTH)] = embedded_time;
     }
